@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 470" width="940" height="470">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <clipPath id="frame">
+      <rect width="940" height="470" rx="16"/>
+    </clipPath>
+  </defs>
+
+  <!-- Canvas -->
+  <g clip-path="url(#frame)">
+    <rect width="940" height="470" fill="white"/>
+    <rect width="940" height="5" fill="url(#grad)"/>
+  </g>
+  <rect width="940" height="470" rx="16" fill="none" stroke="#E2E8F0" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="470" y="42" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#1E293B">lease</text>
+  <text x="470" y="64" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#64748B">Test services that stop themselves after 1–24 hours</text>
+
+  <!-- ===== Left card: lifecycle ===== -->
+  <rect x="40" y="100" width="380" height="340" rx="16" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1.5"/>
+  <rect x="177" y="86" width="106" height="28" rx="14" fill="#6366F1"/>
+  <text x="230" y="105" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="white">LIFECYCLE</text>
+
+  <!-- 1 Start -->
+  <circle cx="84" cy="164" r="16" fill="#6366F1"/>
+  <text x="84" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="white">1</text>
+  <text x="114" y="158" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1E293B">Start under a lease</text>
+  <text x="114" y="177" font-family="Courier New, Courier, monospace" font-size="11" fill="#475569">lease 6 my-test ollama serve</text>
+  <text x="114" y="194" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">Own process group · lease file: pid, start, end</text>
+
+  <line x1="84" y1="182" x2="84" y2="244" stroke="#C7D2FE" stroke-width="2" stroke-dasharray="4 4"/>
+
+  <!-- 2 Watch -->
+  <circle cx="84" cy="262" r="16" fill="#6366F1"/>
+  <text x="84" y="267" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="white">2</text>
+  <text x="114" y="256" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1E293B">Watchdog checks</text>
+  <text x="114" y="275" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">Wakes every minute · wall clock against the end</text>
+  <text x="114" y="292" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">Time the Mac spends asleep still counts</text>
+
+  <line x1="84" y1="280" x2="84" y2="342" stroke="#C7D2FE" stroke-width="2" stroke-dasharray="4 4"/>
+
+  <!-- 3 Expire -->
+  <circle cx="84" cy="360" r="16" fill="#6366F1"/>
+  <text x="84" y="365" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="white">3</text>
+  <text x="114" y="354" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1E293B">Lease ends</text>
+  <text x="114" y="373" font-family="Courier New, Courier, monospace" font-size="11" fill="#475569">SIGTERM group → 30 s → SIGKILL</text>
+  <text x="114" y="390" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">The whole group stops, children included</text>
+
+  <!-- ===== Right card: safety and control ===== -->
+  <rect x="520" y="100" width="380" height="340" rx="16" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1.5"/>
+  <rect x="623" y="86" width="174" height="28" rx="14" fill="#10B981"/>
+  <text x="710" y="105" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="white">SAFETY AND CONTROL</text>
+
+  <!-- Identity check -->
+  <circle cx="564" cy="164" r="16" fill="#10B981"/>
+  <text x="564" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="white">✓</text>
+  <text x="594" y="158" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1E293B">Identity check</text>
+  <text x="594" y="177" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">The leader's start time must match the lease</text>
+  <text x="594" y="194" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">A reused PID is never signalled</text>
+
+  <line x1="564" y1="182" x2="564" y2="244" stroke="#A7F3D0" stroke-width="2" stroke-dasharray="4 4"/>
+
+  <!-- List -->
+  <circle cx="564" cy="262" r="16" fill="#10B981"/>
+  <text x="564" y="267" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="white">?</text>
+  <text x="594" y="256" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1E293B">See what runs</text>
+  <text x="594" y="275" font-family="Courier New, Courier, monospace" font-size="11" fill="#475569">lease list</text>
+  <text x="594" y="292" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">Name, pid, end time · stale leases cleared</text>
+
+  <line x1="564" y1="280" x2="564" y2="342" stroke="#A7F3D0" stroke-width="2" stroke-dasharray="4 4"/>
+
+  <!-- End early -->
+  <circle cx="564" cy="360" r="16" fill="#10B981"/>
+  <text x="564" y="365" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="white">■</text>
+  <text x="594" y="354" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#1E293B">Stop early</text>
+  <text x="594" y="373" font-family="Courier New, Courier, monospace" font-size="11" fill="#475569">lease end my-test</text>
+  <text x="594" y="390" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#64748B">Stops the service and its watchdog</text>
+
+  <!-- ===== Bridge, drawn last so it sits on top of both cards ===== -->
+  <line x1="420" y1="164" x2="516" y2="164" stroke="#94A3B8" stroke-width="1.5"/>
+  <polygon points="518,164 510,158 510,170" fill="#94A3B8"/>
+  <rect x="425" y="126" width="90" height="38" rx="10" fill="white" stroke="#CBD5E1" stroke-width="1"/>
+  <text x="470" y="141" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#64748B">checked before</text>
+  <text x="470" y="155" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="10" fill="#64748B">every signal</text>
+</svg>

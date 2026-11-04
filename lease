@@ -1,0 +1,119 @@
+#!/bin/bash
+# lease — run a test service that stops itself when its lease ends (macOS).
+#
+#   lease <hours> <name> <command> [args...]   start <command> in the background, log to ~/.leases/<name>.log
+#   lease list                                  show active leases and when they end
+#   lease end <name>                            stop a leased service now
+#
+# Hours: 1-24 (6 for a quick test, 24 at most). At expiry the service's process group gets SIGTERM, then
+# SIGKILL after 30 s. Expiry follows the wall clock, so time the Mac spends asleep counts.
+# Limit: a command that daemonises itself (forks into a new session and exits) leaves the group; lease
+# reports it as ended at once. Run such services in the foreground (e.g. `ollama serve`, not `brew services`).
+set -euo pipefail
+dir="$HOME/.leases"
+grace=30
+# Seconds per lease hour. Only tests change it.
+unit="${LEASE_UNIT_SECONDS:-3600}"
+mkdir -p "$dir"
+
+starttime() { ps -o lstart= -p "$1" 2>/dev/null | sed 's/  */ /g' || true; }
+
+# The group is still ours if its leader is the process we started (same PID and start time), or if the
+# leader has exited and members remain: a PID cannot be reused while a group with that id has members.
+ours() { # <pgid> <recorded start time>
+  local now
+  now=$(starttime "$1")
+  if [ -n "$now" ]; then [ "$now" = "$2" ]; else pgrep -g "$1" >/dev/null 2>&1; fi
+}
+
+stop_group() { # <pgid> <recorded start time>
+  ours "$1" "$2" || return 0
+  kill -TERM -- "-$1" 2>/dev/null || return 0
+  for _ in $(seq "$grace"); do pgrep -g "$1" >/dev/null 2>&1 || return 0; sleep 1; done
+  ours "$1" "$2" && kill -KILL -- "-$1" 2>/dev/null || true
+}
+
+load() { # <lease file>; sets name pid start end cmd wd
+  name='' pid='' start='' end='' cmd='' wd=''
+  # shellcheck disable=SC1090
+  . "$1"
+}
+
+valid_name() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]; }
+
+case "${1:-}" in
+  list)
+    now=$(date +%s); shown=0
+    for f in "$dir"/*.lease; do
+      [ -e "$f" ] || break
+      load "$f"
+      if ours "$pid" "$start"; then
+        printf '%-28s pid %-7s ends %s (%sh left)  %s\n' "$name" "$pid" "$(date -r "$end" '+%a %d %b %H:%M')" \
+          "$(( (end - now + 1799) / 3600 ))" "$cmd"
+        shown=1
+      else
+        rm -f "$f"
+      fi
+    done
+    [ "$shown" = 1 ] || echo "no active leases"
+    ;;
+  end)
+    name="${2:?usage: lease end <name>}"; valid_name "$name" || { echo "lease: bad name" >&2; exit 2; }
+    f="$dir/$name.lease"; [ -e "$f" ] || { echo "lease: no lease named $name" >&2; exit 1; }
+    load "$f"
+    rm -f "$f"
+    # Only if that PID is still this lease's watchdog (its arguments name the lease file); its sleep
+    # child ends by itself within 60 s.
+    if [ -n "$wd" ] && ps -o command= -p "$wd" 2>/dev/null | grep -qF -- "$f"; then kill "$wd" 2>/dev/null || true; fi
+    stop_group "$pid" "$start"
+    echo "ended $name"
+    ;;
+  ''|-h|--help)
+    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+  *)
+    hours="$1"; name="${2:-}"
+    [[ "$hours" =~ ^[0-9]{1,2}$ ]] && hours=$((10#$hours)) && [ "$hours" -ge 1 ] && [ "$hours" -le 24 ] \
+      || { echo "lease: hours must be 1-24" >&2; exit 2; }
+    valid_name "$name" || { echo "lease: name must be 1-64 of A-Z a-z 0-9 . _ - (start with a letter or digit)" >&2; exit 2; }
+    shift 2
+    [ "$#" -gt 0 ] || { echo "lease: no command given" >&2; exit 2; }
+    f="$dir/$name.lease"
+    if [ -e "$f" ]; then
+      load "$f"
+      if ours "$pid" "$start"; then echo "lease: $name is still running (lease end $name first)" >&2; exit 1; fi
+      rm -f "$f"
+    fi
+    end=$(( $(date +%s) + hours * unit ))
+    # setsid is missing on macOS; perl gives the service its own process group, then execs it.
+    nohup perl -e 'setpgrp(0,0); exec { $ARGV[0] } @ARGV or die "lease: cannot run $ARGV[0]: $!\n"' "$@" \
+      >"$dir/$name.log" 2>&1 < /dev/null &
+    pid=$!
+    sleep 1
+    start=$(starttime "$pid")
+    if [ -z "$start" ] || [ "$(ps -o pgid= -p "$pid" | tr -d ' ')" != "$pid" ]; then
+      echo "lease: $name exited at once (or left its process group); log:" >&2
+      tail -5 "$dir/$name.log" >&2
+      exit 1
+    fi
+    printf 'name=%q\npid=%q\nstart=%q\nend=%q\ncmd=%q\n' "$name" "$pid" "$start" "$end" "$*" > "$f"
+    # Watchdog in its own group: wakes each minute and compares the wall clock with the end, so sleep
+    # does not stretch the lease. It acts only while the group is still the one it started (ours), so a
+    # reused PID is never touched; `lease end` kills it early.
+    nohup perl -e 'setpgrp(0,0); exec @ARGV' bash -c '
+      f=$1 pid=$2 start=$3 end=$4 grace=$5
+      st() { ps -o lstart= -p "$1" 2>/dev/null | sed "s/  */ /g" || true; }
+      ours() { local n; n=$(st "$pid"); if [ -n "$n" ]; then [ "$n" = "$start" ]; else pgrep -g "$pid" >/dev/null 2>&1; fi; }
+      while [ "$(date +%s)" -lt "$end" ]; do
+        ours || { rm -f "$f"; exit 0; }
+        left=$(( end - $(date +%s) )); sleep $(( left < 60 ? (left > 0 ? left : 1) : 60 ))
+      done
+      rm -f "$f"
+      ours || exit 0
+      kill -TERM -- "-$pid" 2>/dev/null
+      for _ in $(seq "$grace"); do pgrep -g "$pid" >/dev/null 2>&1 || exit 0; sleep 1; done
+      ours && kill -KILL -- "-$pid" 2>/dev/null' _ "$f" "$pid" "$start" "$end" "$grace" >/dev/null 2>&1 < /dev/null &
+    printf 'wd=%q\n' "$!" >> "$f"
+    echo "$name: pid $pid, lease ends $(date -r "$end" '+%a %d %b %H:%M'), log $dir/$name.log"
+    ;;
+esac
